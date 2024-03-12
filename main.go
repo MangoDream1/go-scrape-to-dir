@@ -21,11 +21,11 @@ func main() {
 	}
 
 	s := scraper.Scraper{
-		AllowedHrefRegex:      regexp.MustCompile(`boards.4chan.org`),
+		AllowedHrefRegex:      regexp.MustCompile(`en.wikipedia.org/wiki`),
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
 		MaxConcurrentRequests: 5,
-		StartUrl:              "boards.4chan.org/biz/",
+		StartUrl:              "en.wikipedia.org/wiki/United_Kingdom",
 	}
 
 	o := make(chan scraper.Html)

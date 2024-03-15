@@ -15,7 +15,7 @@ import (
 type config struct {
 	htmlDir               string `env:"HTML_DIR"`
 	startUrl              string `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
-	maxConcurrentRequests int    `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
+	maxConcurrentRequests int8   `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
 	allowedHrefRegex      string `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
 }
 
@@ -29,7 +29,7 @@ func main() {
 		AllowedHrefRegex:      regexp.MustCompile(c.allowedHrefRegex),
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
-		MaxConcurrentRequests: 5,
+		MaxConcurrentRequests: c.maxConcurrentRequests,
 		StartUrl:              c.startUrl,
 	}
 

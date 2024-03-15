@@ -2,7 +2,10 @@ module github.com/MangoDream1/go-scrape-to-dir
 
 go 1.21.3
 
-require github.com/MangoDream1/go-scraper v0.0.0-20240310150711-ca4ac08ab20f
+require (
+	github.com/MangoDream1/go-scraper v0.0.0-20240310150711-ca4ac08ab20f
+	github.com/caarlos0/env/v10 v10.0.0
+)
 
 require (
 	github.com/MangoDream1/go-limiter v1.0.0 // indirect

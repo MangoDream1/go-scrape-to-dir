@@ -9,23 +9,28 @@ import (
 	"strings"
 
 	"github.com/MangoDream1/go-scraper"
+	"github.com/caarlos0/env/v10"
 )
 
 type config struct {
-	htmlDir string
+	htmlDir               string `env:"HTML_DIR"`
+	startUrl              string `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
+	maxConcurrentRequests int    `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
+	allowedHrefRegex      string `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
 }
 
 func main() {
-	c := config{
-		htmlDir: "/mnt/storage/Projects/personal/go-scrape-to-dir/data",
+	c := &config{}
+	if err := env.Parse(c); err != nil {
+		panic(err)
 	}
 
 	s := scraper.Scraper{
-		AllowedHrefRegex:      regexp.MustCompile(`en.wikipedia.org/wiki`),
+		AllowedHrefRegex:      regexp.MustCompile(c.allowedHrefRegex),
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
 		MaxConcurrentRequests: 5,
-		StartUrl:              "en.wikipedia.org/wiki/United_Kingdom",
+		StartUrl:              c.startUrl,
 	}
 
 	o := make(chan scraper.Html)

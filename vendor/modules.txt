@@ -10,6 +10,9 @@ github.com/PuerkitoBio/goquery
 # github.com/andybalholm/cascadia v1.3.2
 ## explicit; go 1.16
 github.com/andybalholm/cascadia
+# github.com/caarlos0/env/v10 v10.0.0
+## explicit; go 1.17
+github.com/caarlos0/env/v10
 # golang.org/x/net v0.22.0
 ## explicit; go 1.18
 golang.org/x/net/html

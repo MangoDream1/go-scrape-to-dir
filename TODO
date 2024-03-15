@@ -1,2 +1,3 @@
-- [X] add docker
-- [ ] add load from env
+- [x] add docker
+- [x] add load from env
+- [ ] add docker-compose

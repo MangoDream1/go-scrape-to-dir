@@ -13,24 +13,24 @@ import (
 )
 
 type config struct {
-	htmlDir               string `env:"HTML_DIR"`
-	startUrl              string `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
-	maxConcurrentRequests int8   `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
-	allowedHrefRegex      string `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
+	HtmlDir               string `env:"HTML_DIR"`
+	StartUrl              string `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
+	MaxConcurrentRequests int8   `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
+	AllowedHrefRegex      string `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
 }
 
 func main() {
-	c := &config{}
-	if err := env.Parse(c); err != nil {
+	c := config{}
+	if err := env.Parse(&c); err != nil {
 		panic(err)
 	}
 
 	s := scraper.Scraper{
-		AllowedHrefRegex:      regexp.MustCompile(c.allowedHrefRegex),
+		AllowedHrefRegex:      regexp.MustCompile(c.AllowedHrefRegex),
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
-		MaxConcurrentRequests: c.maxConcurrentRequests,
-		StartUrl:              c.startUrl,
+		MaxConcurrentRequests: c.MaxConcurrentRequests,
+		StartUrl:              c.StartUrl,
 	}
 
 	o := make(chan scraper.Html)
@@ -53,7 +53,7 @@ func main() {
 
 func (c *config) save(href string, blob io.Reader) {
 	fileName := transformUrlIntoFilename(href)
-	path := filepath.Join(c.htmlDir, fileName)
+	path := filepath.Join(c.HtmlDir, fileName)
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -86,7 +86,7 @@ func (c *config) save(href string, blob io.Reader) {
 
 func (c *config) doesHtmlExist(href string) bool {
 	fileName := transformUrlIntoFilename(href)
-	path := filepath.Join(c.htmlDir, fileName)
+	path := filepath.Join(c.HtmlDir, fileName)
 	return doesFileExist(path)
 }
 

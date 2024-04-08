@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -35,13 +36,46 @@ func main() {
 		blockHrefRegex = regexp.MustCompile(*c.BlockedHrefRegex)
 	}
 
+	tmpBytes := []byte("tmp")
 	s := scraper.Scraper{
 		AllowedHrefRegex:      regexp.MustCompile(c.AllowedHrefRegex),
 		BlockedHrefRegex:      blockHrefRegex,
 		AlreadyDownloaded:     c.doesHtmlExist,
-		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
+		HasDownloaded:         func(href string) { c.save(href, strings.NewReader(string(tmpBytes))) },
 		MaxConcurrentRequests: c.MaxConcurrentRequests,
 		StartUrl:              c.StartUrl,
+	}
+
+	parseFile := func(path string) {
+		f, err := readFile(path)
+		if err != nil {
+			fmt.Printf("An error has occurred while trying to read file with name: %v \n", path)
+			return
+		}
+		defer f.Close()
+
+		bodyW := new(bytes.Buffer)
+		bodyT := io.TeeReader(f, bodyW)
+
+		bytesT, err := io.ReadAll(bodyT)
+		if err != nil {
+			fmt.Printf("An error has occurred while trying read file with name: %v \n", path)
+			return
+		}
+
+		skip := len(bytesT) == 0 || bytes.Equal(bytesT, tmpBytes)
+		if skip {
+			removeFile(path)
+			fmt.Printf("File with name: %v was temporary and is now removed\n", path)
+			return
+		}
+
+		parentHref := pathToUrl(path, *c.HtmlDir)
+		err = s.ParseHtml(parentHref, bodyW)
+		if err != nil {
+			fmt.Printf("An error has occurred while trying to parse file with name: %v \n", path)
+			return
+		}
 	}
 
 	o := make(chan scraper.Html)
@@ -49,10 +83,18 @@ func main() {
 
 	done := make(chan bool)
 
+	pathc := make(chan string)
+	go readNestedDir(*c.HtmlDir, pathc)
+
 	for {
 		select {
 		case <-done:
 			continue
+		case path := <-pathc:
+			go func() {
+				parseFile(path)
+				done <- true
+			}()
 		case html := <-o:
 			go func() {
 				c.save(html.Href, html.Body)
@@ -113,6 +155,14 @@ func transformUrlIntoFilename(href string) (fileName string) {
 	return
 }
 
+func pathToUrl(path string, storageDir string) (url string) {
+	storage := storageDir + "/"
+	url = strings.Replace(path, storage, "", 1) + "/"
+	url = strings.Replace(url, "https:/", "https://", 1)
+
+	return
+}
+
 func addExtension(id string, extension string) string {
 	return fmt.Sprintf("%s.%s", id, extension)
 }
@@ -124,4 +174,66 @@ func doesFileExist(path string) bool {
 		}
 	}
 	return true
+}
+
+func readFile(path string) (io.ReadCloser, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func removeFile(path string) error {
+	err := os.Remove(path)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func readNestedDir(dirPath string, outputc chan string) error {
+	if !doesFileExist(dirPath) {
+		return fmt.Errorf("dirpath %v does not exist", dirPath)
+	}
+
+	done := make(chan bool)
+	errc := make(chan error)
+	count := 1
+
+	var inner func(dirPath string)
+	inner = func(dirPath string) {
+		defer func() { done <- true }()
+
+		fs, err := os.ReadDir(dirPath)
+		if err != nil {
+			errc <- err
+			return
+		}
+
+		for _, f := range fs {
+			path := filepath.Join(dirPath, f.Name())
+			if f.IsDir() {
+				count++
+				go inner(path)
+			} else {
+				outputc <- path
+			}
+		}
+	}
+
+	go inner(dirPath)
+
+	for {
+		select {
+		case err := <-errc:
+			return err
+		case <-done:
+			count--
+		default:
+			if count == 0 {
+				return nil
+			}
+		}
+	}
 }

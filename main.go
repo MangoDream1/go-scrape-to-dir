@@ -17,6 +17,7 @@ type config struct {
 	StartUrl              string `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
 	MaxConcurrentRequests int8   `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
 	AllowedHrefRegex      string `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
+	BlockedHrefRegex      string `env:"BLOCKED_HREF_REGEX"`
 }
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 
 	s := scraper.Scraper{
 		AllowedHrefRegex:      regexp.MustCompile(c.AllowedHrefRegex),
+		BlockedHrefRegex:      regexp.MustCompile(c.BlockedHrefRegex),
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
 		MaxConcurrentRequests: c.MaxConcurrentRequests,

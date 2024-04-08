@@ -13,11 +13,11 @@ import (
 )
 
 type config struct {
-	HtmlDir               string `env:"HTML_DIR"`
-	StartUrl              string `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
-	MaxConcurrentRequests int8   `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
-	AllowedHrefRegex      string `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
-	BlockedHrefRegex      string `env:"BLOCKED_HREF_REGEX"`
+	HtmlDir               *string `env:"HTML_DIR"`
+	StartUrl              string  `env:"START_URL" envDefault:"en.wikipedia.org/wiki/United_Kingdom"`
+	MaxConcurrentRequests int8    `env:"MAX_CONCURRENT_REQUESTS" envDefault:"-1"`
+	AllowedHrefRegex      string  `env:"ALLOWED_HREF_REGEX" envDefault:"en.wikipedia.org/wiki"`
+	BlockedHrefRegex      *string `env:"BLOCKED_HREF_REGEX"`
 }
 
 func main() {
@@ -26,9 +26,18 @@ func main() {
 		panic(err)
 	}
 
+	if c.HtmlDir == nil {
+		panic("HTML_DIR is required")
+	}
+
+	var blockHrefRegex *regexp.Regexp
+	if c.BlockedHrefRegex != nil {
+		blockHrefRegex = regexp.MustCompile(*c.BlockedHrefRegex)
+	}
+
 	s := scraper.Scraper{
 		AllowedHrefRegex:      regexp.MustCompile(c.AllowedHrefRegex),
-		BlockedHrefRegex:      regexp.MustCompile(c.BlockedHrefRegex),
+		BlockedHrefRegex:      blockHrefRegex,
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader("tmp")) },
 		MaxConcurrentRequests: c.MaxConcurrentRequests,
@@ -55,7 +64,7 @@ func main() {
 
 func (c *config) save(href string, blob io.Reader) {
 	fileName := transformUrlIntoFilename(href)
-	path := filepath.Join(c.HtmlDir, fileName)
+	path := filepath.Join(*c.HtmlDir, fileName)
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -88,7 +97,7 @@ func (c *config) save(href string, blob io.Reader) {
 
 func (c *config) doesHtmlExist(href string) bool {
 	fileName := transformUrlIntoFilename(href)
-	path := filepath.Join(c.HtmlDir, fileName)
+	path := filepath.Join(*c.HtmlDir, fileName)
 	return doesFileExist(path)
 }
 

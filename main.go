@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/MangoDream1/go-scraper"
 	"github.com/caarlos0/env/v10"
@@ -37,14 +38,15 @@ func main() {
 	}
 
 	tmpBytes := []byte("tmp")
-	s := scraper.Scraper{
+
+	s := scraper.NewScraper(scraper.Options{
 		AllowedHrefRegex:      regexp.MustCompile(c.AllowedHrefRegex),
 		BlockedHrefRegex:      blockHrefRegex,
 		AlreadyDownloaded:     c.doesHtmlExist,
 		HasDownloaded:         func(href string) { c.save(href, strings.NewReader(string(tmpBytes))) },
 		MaxConcurrentRequests: c.MaxConcurrentRequests,
 		StartUrl:              c.StartUrl,
-	}
+	})
 
 	parseFile := func(path string) {
 		f, err := readFile(path)
@@ -78,27 +80,44 @@ func main() {
 		}
 	}
 
-	o := make(chan scraper.Html)
-	go s.Start(o)
-
-	done := make(chan bool)
+	wg := sync.WaitGroup{}
 
 	pathc := make(chan string)
-	go readNestedDir(*c.HtmlDir, pathc)
+	wg.Add(1)
+	go func() {
+		readNestedDir(*c.HtmlDir, pathc)
+		wg.Done()
+	}()
+
+	o := make(chan scraper.Html)
+
+	wg.Add(1)
+	go func() {
+		s.Start(o)
+		wg.Done()
+	}()
+
+	done := make(chan bool)
+	go func() {
+		wg.Wait()
+		done <- true
+	}()
 
 	for {
 		select {
 		case <-done:
-			continue
+			return
 		case path := <-pathc:
+			wg.Add(1)
 			go func() {
 				parseFile(path)
-				done <- true
+				wg.Done()
 			}()
 		case html := <-o:
+			wg.Add(1)
 			go func() {
 				c.save(html.Href, html.Body)
-				done <- true
+				wg.Done()
 			}()
 		}
 	}

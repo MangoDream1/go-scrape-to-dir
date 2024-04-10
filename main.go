@@ -39,6 +39,16 @@ func main() {
 
 	tmpBytes := []byte("tmp")
 
+	// Workaround: removes startUrl file if it exists => otherwise the scraper finish before readNestedDir pushes to pathc
+	// Decided against exposing the WaitGroup from the scraper; thus hard to fix properly otherwise
+	if c.doesHtmlExist(c.StartUrl) {
+		fmt.Println(filepath.Join(*c.HtmlDir, transformUrlIntoFilename(c.StartUrl)))
+		err := removeFile(filepath.Join(*c.HtmlDir, transformUrlIntoFilename(c.StartUrl)))
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	s := scraper.NewScraper(scraper.Options{
 		AllowedHrefRegex:      regexp.MustCompile(c.AllowedHrefRegex),
 		BlockedHrefRegex:      blockHrefRegex,

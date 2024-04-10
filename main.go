@@ -73,7 +73,14 @@ func main() {
 		}
 
 		parentHref := pathToUrl(path, *c.HtmlDir)
-		err = s.ParseHtml(parentHref, bodyW)
+
+		o := make(chan string)
+		err = scraper.ParseHtml(parentHref, bodyW, o)
+
+		for href := range o {
+			s.AddHref(href)
+		}
+
 		if err != nil {
 			fmt.Printf("An error has occurred while trying to parse file with name: %v \n", path)
 			return
